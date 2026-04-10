@@ -61,11 +61,7 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.05] mb-6 text-[#1a1a2e]">
-            Workflows that{" "}
-            <span className="relative inline-block">
-              <span className="relative z-10">run themselves</span>
-              <span className="absolute bottom-1 left-0 right-0 h-3 bg-[#e8c547]/40 -z-0 rounded" />
-            </span>
+            Hello Mihai
           </h1>
 
           <p className="text-lg md:text-xl text-[#1a1a2e]/55 max-w-2xl mx-auto mb-10 leading-relaxed">

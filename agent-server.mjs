@@ -9,9 +9,22 @@ import "dotenv/config";
 
 const PORT = 4000;
 
-// If SANDBOX_BRANCH is set, the agent may only push to that branch.
+// If SANDBOX_BRANCH is set, the agent must stay on that branch.
 // When absent (internal use), any branch is allowed.
 const ALLOWED_BRANCH = process.env.SANDBOX_BRANCH || null;
+
+// Authoritative branch checkout — runs before anything else.
+// The sandbox setup already tries this, but can race against git fetch.
+// Doing it here guarantees we're on the right branch before the first message.
+if (ALLOWED_BRANCH) {
+  try {
+    execSync(`git fetch origin ${ALLOWED_BRANCH}`, { cwd: "/vercel/sandbox", stdio: "pipe" });
+    execSync(`git checkout ${ALLOWED_BRANCH}`, { cwd: "/vercel/sandbox", stdio: "pipe" });
+    console.log(`[agent-server] On branch: ${ALLOWED_BRANCH}`);
+  } catch (e) {
+    console.error(`[agent-server] Failed to checkout '${ALLOWED_BRANCH}':`, e.message);
+  }
+}
 
 const app = express();
 app.use(cors());
