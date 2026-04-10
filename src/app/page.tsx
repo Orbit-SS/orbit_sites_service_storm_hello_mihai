@@ -61,7 +61,7 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.05] mb-6 text-[#1a1a2e]">
-            Hello Mihai
+            Hello Octa
           </h1>
 
           <p className="text-lg md:text-xl text-[#1a1a2e]/55 max-w-2xl mx-auto mb-10 leading-relaxed">
