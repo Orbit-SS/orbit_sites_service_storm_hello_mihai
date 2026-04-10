@@ -9,6 +9,10 @@ import "dotenv/config";
 
 const PORT = 4000;
 
+// If SANDBOX_BRANCH is set, the agent may only push to that branch.
+// When absent (internal use), any branch is allowed.
+const ALLOWED_BRANCH = process.env.SANDBOX_BRANCH || null;
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -42,6 +46,9 @@ app.post("/message", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+
+  // Keep connection alive during long operations (proxies kill idle SSE streams)
+  const heartbeat = setInterval(() => res.write(": ping\n\n"), 15000);
 
   let assistantText = "";
 
@@ -81,10 +88,20 @@ app.post("/message", async (req, res) => {
           // Auto-commit and push on success
           if (msg.subtype === "success") {
             try {
-              execSync("git add -A", { cwd: "/vercel/sandbox" });
-              execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd: "/vercel/sandbox" });
-              execSync("git push", { cwd: "/vercel/sandbox" });
-              sendSSE(res, { type: "saved" });
+              // Branch protection: only push to the allowed branch
+              const currentBranch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: "/vercel/sandbox" })
+                .toString()
+                .trim();
+
+              if (ALLOWED_BRANCH && currentBranch !== ALLOWED_BRANCH) {
+                // Silently skip — do not push to an unintended branch
+                console.warn(`[agent-server] Skipping push: on '${currentBranch}', expected '${ALLOWED_BRANCH}'`);
+              } else {
+                execSync("git add -A", { cwd: "/vercel/sandbox" });
+                execSync(`git commit -m "${message.replace(/"/g, '\\"').replace(/`/g, "\\`").replace(/\$/g, "\\$")}"`, { cwd: "/vercel/sandbox" });
+                execSync("git push", { cwd: "/vercel/sandbox" });
+                sendSSE(res, { type: "saved" });
+              }
             } catch (e) {
               // No changes to commit is fine
             }
@@ -101,25 +118,10 @@ app.post("/message", async (req, res) => {
   } catch (err) {
     sendSSE(res, { type: "error", message: err.message });
   } finally {
+    clearInterval(heartbeat);
     res.end();
   }
 });
 
-app.post("/deploy", async (_req, res) => {
-  try {
-    const token = process.env.VERCEL_TOKEN;
-    if (!token) {
-      return res.status(500).json({ error: "VERCEL_TOKEN not set" });
-    }
-    const { execSync } = await import("child_process");
-    const output = execSync(`npx vercel deploy --prod --token ${token} --yes`, {
-      cwd: "/vercel/sandbox",
-      timeout: 120000,
-    }).toString();
-    res.json({ success: true, output });
-  } catch (err) {
-    res.status(500).json({ error: err.message, output: err.stdout?.toString() });
-  }
-});
 
 app.listen(PORT, () => console.log(`Agent server on :${PORT}`));

@@ -40,7 +40,7 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* Hello */}
       <section className="relative flex flex-col items-center justify-center text-center px-6 pt-36 pb-24 overflow-hidden">
         {/* Subtle grid background */}
         <div
